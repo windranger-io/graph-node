@@ -59,6 +59,7 @@ pub struct HostExports<C: Blockchain> {
     store: Arc<dyn SubgraphStore>,
     arweave_adapter: Arc<dyn ArweaveAdapter>,
     three_box_adapter: Arc<dyn ThreeBoxAdapter>,
+    gas_used: GasCounter,
 }
 
 impl<C: Blockchain> HostExports<C> {
@@ -87,7 +88,15 @@ impl<C: Blockchain> HostExports<C> {
             store,
             arweave_adapter,
             three_box_adapter,
+            gas_used: GasCounter::new(),
         }
+    }
+
+    // TODO: What's the scope of this when is it set to 0? Ideally per block?
+    /// This should be called once per host export
+    #[inline]
+    pub(crate) fn consume_gas(&self, amount: Gas) -> Result<(), DeterministicHostError> {
+        self.gas_used.consume(amount + gas::HOST_EXPORT)
     }
 
     pub(crate) fn abort(
@@ -166,6 +175,9 @@ impl<C: Blockchain> HostExports<C> {
             entity_type: EntityType::new(entity_type),
             entity_id,
         };
+
+        self.consume_gas(gas::STORE_SET.with_args(complexity::Linear, (&key, &data)))?;
+
         let entity = Entity::from(data);
         let schema = self.store.input_schema(&self.subgraph_id)?;
         let is_valid = validate_entity(&schema.document, &key, &entity).is_ok();
@@ -210,6 +222,9 @@ impl<C: Blockchain> HostExports<C> {
             entity_type: EntityType::new(entity_type),
             entity_id,
         };
+
+        self.consume_gas(gas::STORE_REMOVE.with_args(complexity::Size, &key))?;
+
         state.entity_cache.remove(key);
 
         Ok(())
@@ -227,6 +242,9 @@ impl<C: Blockchain> HostExports<C> {
             entity_id: entity_id.clone(),
         };
 
+        let result = state.entity_cache.get(&store_key)?;
+        self.consume_gas(gas::STORE_GET.with_args(complexity::Linear, (&store_key, &result)))?;
+
         Ok(state.entity_cache.get(&store_key)?)
     }
 
@@ -236,6 +254,8 @@ impl<C: Blockchain> HostExports<C> {
     ///
     /// https://godoc.org/github.com/ethereum/go-ethereum/common/hexutil#hdr-Encoding_Rules
     pub(crate) fn big_int_to_hex(&self, n: BigInt) -> Result<String, DeterministicHostError> {
+        self.consume_gas(gas::BIG_INT_TO_HEX.with_args(Size, n))?;
+
         if n == 0.into() {
             return Ok("0x0".to_string());
         }
@@ -248,6 +268,9 @@ impl<C: Blockchain> HostExports<C> {
     }
 
     pub(crate) fn ipfs_cat(&self, logger: &Logger, link: String) -> Result<Vec<u8>, anyhow::Error> {
+        // Does not consume gas because this is not a part of the deterministic feature set.
+        // Ideally this would first consume gas for fetching the file stats, and then again
+        // for the bytes of the file.
         block_on03(self.link_resolver.cat(logger, &Link { link }))
     }
 
@@ -266,6 +289,10 @@ impl<C: Blockchain> HostExports<C> {
         user_data: store::Value,
         flags: Vec<String>,
     ) -> Result<Vec<BlockState<C>>, anyhow::Error> {
+        // Does not consume gas because this is not a part of deterministic APIs.
+        // Ideally we would consume gas the same as ipfs_cat and then share
+        // gas across the spawned modules for callbacks.
+
         const JSON_FLAG: &str = "json";
         ensure!(
             flags.contains(&JSON_FLAG.to_string()),
@@ -319,6 +346,7 @@ impl<C: Blockchain> HostExports<C> {
 
     /// Expects a decimal string.
     pub(crate) fn json_to_i64(&self, json: String) -> Result<i64, DeterministicHostError> {
+        self.consume_gas(gas::JSON_TO_I64.with_args(complexity::Size, &json))?;
         i64::from_str(&json)
             .with_context(|| format!("JSON `{}` cannot be parsed as i64", json))
             .map_err(DeterministicHostError)
@@ -326,6 +354,8 @@ impl<C: Blockchain> HostExports<C> {
 
     /// Expects a decimal string.
     pub(crate) fn json_to_u64(&self, json: String) -> Result<u64, DeterministicHostError> {
+        self.consume_gas(gas::JSON_TO_U64.with_args(complexity::Size, &json))?;
+
         u64::from_str(&json)
             .with_context(|| format!("JSON `{}` cannot be parsed as u64", json))
             .map_err(DeterministicHostError)
@@ -333,6 +363,8 @@ impl<C: Blockchain> HostExports<C> {
 
     /// Expects a decimal string.
     pub(crate) fn json_to_f64(&self, json: String) -> Result<f64, DeterministicHostError> {
+        self.consume_gas(gas::JSON_TO_F64.with_args(complexity::Size, &json))?;
+
         f64::from_str(&json)
             .with_context(|| format!("JSON `{}` cannot be parsed as f64", json))
             .map_err(DeterministicHostError)
@@ -340,6 +372,8 @@ impl<C: Blockchain> HostExports<C> {
 
     /// Expects a decimal string.
     pub(crate) fn json_to_big_int(&self, json: String) -> Result<Vec<u8>, DeterministicHostError> {
+        self.consume_gas(gas::JSON_TO_BIGINT.with_args(complexity::Size, &json))?;
+
         let big_int = BigInt::from_str(&json)
             .with_context(|| format!("JSON `{}` is not a decimal string", json))
             .map_err(DeterministicHostError)?;
@@ -350,7 +384,9 @@ impl<C: Blockchain> HostExports<C> {
         &self,
         input: Vec<u8>,
     ) -> Result<[u8; 32], DeterministicHostError> {
-        Ok(tiny_keccak::keccak256(&input))
+        let data = &input[..];
+        self.consume_gas(gas::KECCAK256.with_args(complexity::Size, data))?;
+        Ok(tiny_keccak::keccak256(data))
     }
 
     pub(crate) fn big_int_plus(
@@ -358,6 +394,7 @@ impl<C: Blockchain> HostExports<C> {
         x: BigInt,
         y: BigInt,
     ) -> Result<BigInt, DeterministicHostError> {
+        self.consume_gas(gas::BIG_INT_PLUS.with_args(complexity::Max, (&x, &y)))?;
         Ok(x + y)
     }
 
@@ -366,6 +403,7 @@ impl<C: Blockchain> HostExports<C> {
         x: BigInt,
         y: BigInt,
     ) -> Result<BigInt, DeterministicHostError> {
+        self.consume_gas(gas::BIG_INT_MINUS.with_args(complexity::Max, (&x, &y)))?;
         Ok(x - y)
     }
 
@@ -374,6 +412,7 @@ impl<C: Blockchain> HostExports<C> {
         x: BigInt,
         y: BigInt,
     ) -> Result<BigInt, DeterministicHostError> {
+        self.consume_gas(gas::BIG_INT_MUL.with_args(complexity::Exponential, (&x, &y)))?;
         Ok(x * y)
     }
 
@@ -382,6 +421,7 @@ impl<C: Blockchain> HostExports<C> {
         x: BigInt,
         y: BigInt,
     ) -> Result<BigInt, DeterministicHostError> {
+        self.consume_gas(gas::BIG_INT_DIV.with_args(complexity::Exponential, (&x, &y)))?;
         if y == 0.into() {
             return Err(DeterministicHostError(anyhow!(
                 "attempted to divide BigInt `{}` by zero",
@@ -396,6 +436,7 @@ impl<C: Blockchain> HostExports<C> {
         x: BigInt,
         y: BigInt,
     ) -> Result<BigInt, DeterministicHostError> {
+        self.consume_gas(gas::BIG_INT_MOD.with_args(complexity::Exponential, (&x, &y)))?;
         if y == 0.into() {
             return Err(DeterministicHostError(anyhow!(
                 "attempted to calculate the remainder of `{}` with a divisor of zero",
@@ -411,10 +452,12 @@ impl<C: Blockchain> HostExports<C> {
         x: BigInt,
         exponent: u8,
     ) -> Result<BigInt, DeterministicHostError> {
+        self.consume_gas(gas::BIG_INT_POW.with_args(complexity::TODO, (&x, &y)))?;
         Ok(x.pow(exponent))
     }
 
     pub(crate) fn big_int_from_string(&self, s: String) -> Result<BigInt, DeterministicHostError> {
+        self.consume_gas(gas::BIG_INT_FROM_STRING.with_args(complexity::Size, &s))?;
         BigInt::from_str(&s)
             .with_context(|| format!("string is not a BigInt: `{}`", s))
             .map_err(DeterministicHostError)
@@ -425,6 +468,7 @@ impl<C: Blockchain> HostExports<C> {
         x: BigInt,
         y: BigInt,
     ) -> Result<BigInt, DeterministicHostError> {
+        self.consume_gas(gas::BIG_INT_BIT_OR.with_args(complexity::MAX, (&x, &y)))?;
         Ok(x | y)
     }
 
@@ -433,6 +477,7 @@ impl<C: Blockchain> HostExports<C> {
         x: BigInt,
         y: BigInt,
     ) -> Result<BigInt, DeterministicHostError> {
+        self.consume_gas(gas::BIG_INT_BIT_AND.with_args(complexity::MIN, (&x, &y)))?;
         Ok(x & y)
     }
 
@@ -441,6 +486,7 @@ impl<C: Blockchain> HostExports<C> {
         x: BigInt,
         bits: u8,
     ) -> Result<BigInt, DeterministicHostError> {
+        self.consume_gas(gas::BIG_INT_SHL.with_args(complexity::TODO, (&x, &y)))?;
         Ok(x << bits)
     }
 
@@ -449,11 +495,13 @@ impl<C: Blockchain> HostExports<C> {
         x: BigInt,
         bits: u8,
     ) -> Result<BigInt, DeterministicHostError> {
+        self.consume_gas(gas::BIG_INT_SHR.with_args(complexity::TODO, (&x, &y)))?;
         Ok(x >> bits)
     }
 
     /// Useful for IPFS hashes stored as bytes
     pub(crate) fn bytes_to_base58(&self, bytes: Vec<u8>) -> Result<String, DeterministicHostError> {
+        self.consume_gas(gas::BYTES_TO_BASE58.with_args(complexity::Size, &bytes))?;
         Ok(::bs58::encode(&bytes).into_string())
     }
 
@@ -462,6 +510,7 @@ impl<C: Blockchain> HostExports<C> {
         x: BigDecimal,
         y: BigDecimal,
     ) -> Result<BigDecimal, DeterministicHostError> {
+        self.consume_gas(gas::BIG_DECIMAL_PLUS.with_args(complexity::Linear, (&x, &y)))?;
         Ok(x + y)
     }
 
@@ -470,6 +519,7 @@ impl<C: Blockchain> HostExports<C> {
         x: BigDecimal,
         y: BigDecimal,
     ) -> Result<BigDecimal, DeterministicHostError> {
+        self.consume_gas(gas::BIG_DECIMAL_MINUS.with_args(complexity::Linear, (&x, &y)))?;
         Ok(x - y)
     }
 
@@ -478,6 +528,7 @@ impl<C: Blockchain> HostExports<C> {
         x: BigDecimal,
         y: BigDecimal,
     ) -> Result<BigDecimal, DeterministicHostError> {
+        self.consume_gas(gas::BIG_DECIMAL_MUL.with_args(complexity::Exponential, (&x, &y)))?;
         Ok(x * y)
     }
 
@@ -487,6 +538,7 @@ impl<C: Blockchain> HostExports<C> {
         x: BigDecimal,
         y: BigDecimal,
     ) -> Result<BigDecimal, DeterministicHostError> {
+        self.consume_gas(gas::BIG_DECIMAL_DIV.with_args(complexity::Exponential, (&x, &y)))?;
         if y == 0.into() {
             return Err(DeterministicHostError(anyhow!(
                 "attempted to divide BigDecimal `{}` by zero",
@@ -501,6 +553,7 @@ impl<C: Blockchain> HostExports<C> {
         x: BigDecimal,
         y: BigDecimal,
     ) -> Result<bool, DeterministicHostError> {
+        self.consume_gas(gas::BIG_DECIMAL_EQ.with_args(complexity::MIN, (&x, &y)))?;
         Ok(x == y)
     }
 
@@ -508,6 +561,7 @@ impl<C: Blockchain> HostExports<C> {
         &self,
         x: BigDecimal,
     ) -> Result<String, DeterministicHostError> {
+        self.consume_gas(gas::BIG_DECIMAL_TO_STR.with_args(complexity::Linear, (&x, &y)))?;
         Ok(x.to_string())
     }
 
@@ -515,6 +569,7 @@ impl<C: Blockchain> HostExports<C> {
         &self,
         s: String,
     ) -> Result<BigDecimal, DeterministicHostError> {
+        self.consume_gas(gas::BIG_DECIMAL_PARSE.with_args(complexity::Linear, (&x, &y)))?;
         BigDecimal::from_str(&s)
             .with_context(|| format!("string  is not a BigDecimal: '{}'", s))
             .map_err(DeterministicHostError)
