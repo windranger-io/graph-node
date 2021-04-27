@@ -289,11 +289,18 @@ async fn json_conversions() {
     let number = "-922337203685077092345034";
     let number_ptr = asc_new(&mut module, number).unwrap();
     let big_int_obj: AscPtr<AscBigInt> = module.invoke_export("testToBigInt", number_ptr);
+<<<<<<< HEAD:runtime/test/src/test.rs
     let bytes: Vec<u8> = asc_get(&module, big_int_obj).unwrap();
+=======
+    let bytes: Vec<u8> = module.asc_get(big_int_obj).unwrap();
+
+>>>>>>> runtime: Test gas usage:runtime/wasm/src/module/test.rs
     assert_eq!(
         scalar::BigInt::from_str(number).unwrap(),
         scalar::BigInt::from_signed_bytes_le(&bytes)
     );
+
+    assert_eq!(module.gas_used(), 184180372);
 }
 
 #[tokio::test]
@@ -316,8 +323,15 @@ async fn json_parsing() {
     let bytes: &[u8] = s.as_ref();
     let bytes_ptr = asc_new(&mut module, bytes).unwrap();
     let return_value: AscPtr<AscString> = module.invoke_export("handleJsonError", bytes_ptr);
+<<<<<<< HEAD:runtime/test/src/test.rs
     let output: String = asc_get(&module, return_value).unwrap();
     assert_eq!(output, "OK: foo, ERROR: false");
+=======
+    let output: String = module.asc_get(return_value).unwrap();
+    assert_eq!(output, "OK: foo");
+
+    assert_eq!(module.gas_used(), 1236877);
+>>>>>>> runtime: Test gas usage:runtime/wasm/src/module/test.rs
 }
 
 #[tokio::test(threaded_scheduler)]
@@ -533,6 +547,8 @@ async fn big_int_to_hex() {
         u256_max_hex_str,
         "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
     );
+
+    assert_eq!(module.gas_used(), 184013403);
 }
 
 #[tokio::test]
@@ -595,6 +611,8 @@ async fn big_int_arithmetic() {
     let result_ptr: AscPtr<AscBigInt> = module.invoke_export2("mod", five, two);
     let result: BigInt = asc_get(&module, result_ptr).unwrap();
     assert_eq!(result, BigInt::from(1));
+
+    assert_eq!(module.gas_used(), 184342018);
 }
 
 #[tokio::test]
@@ -617,12 +635,20 @@ async fn bytes_to_base58() {
         .unwrap();
     let bytes_ptr = asc_new(&mut module, bytes.as_slice()).unwrap();
     let result_ptr: AscPtr<AscString> = module.invoke_export("bytes_to_base58", bytes_ptr);
+<<<<<<< HEAD:runtime/test/src/test.rs
     let base58: String = asc_get(&module, result_ptr).unwrap();
+=======
+    let base58: String = module.asc_get(result_ptr).unwrap();
+
+>>>>>>> runtime: Test gas usage:runtime/wasm/src/module/test.rs
     assert_eq!(base58, "QmWmyoMoctfbAaiEs2G46gpeUmhqFRDW6KWo64y5r581Vz");
+
+    assert_eq!(module.gas_used(), 183820465);
 }
 
 #[tokio::test]
 async fn data_source_create() {
+<<<<<<< HEAD:runtime/test/src/test.rs
     let run_data_source_create =
         move |name: String,
               params: Vec<String>|
@@ -639,6 +665,26 @@ async fn data_source_create() {
             module.instance_ctx_mut().ctx.state.exit_handler();
             Ok(module.take_ctx().ctx.state.drain_created_data_sources())
         };
+=======
+    let run_data_source_create = move |name: String,
+                                       params: Vec<String>|
+          -> Result<Vec<DataSourceTemplateInfo>, wasmtime::Trap> {
+        let mut module = test_module(
+            "DataSourceCreate",
+            mock_data_source("wasm_test/data_source_create.wasm"),
+        );
+
+        let name = module.asc_new(&name).unwrap();
+        let params = module.asc_new(&*params).unwrap();
+        module.instance_ctx_mut().ctx.state.enter_handler();
+        module.invoke_export2_void("dataSourceCreate", name, params)?;
+        module.instance_ctx_mut().ctx.state.exit_handler();
+
+        assert_eq!(module.gas_used(), 543636483);
+
+        Ok(module.take_ctx().ctx.state.drain_created_data_sources())
+    };
+>>>>>>> runtime: Test gas usage:runtime/wasm/src/module/test.rs
 
     // Test with a valid template
     let template = String::from("example template");
@@ -767,6 +813,8 @@ async fn entity_store() {
         }
         _ => assert!(false, "expected Insert modification"),
     }
+
+    assert_eq!(module.gas_used(), 312058391);
 }
 
 #[tokio::test]

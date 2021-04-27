@@ -45,8 +45,13 @@ async fn abi_array() {
     let vec_obj: AscPtr<Array<AscPtr<AscString>>> = asc_new(&mut module, &*vec).unwrap();
 
     let new_vec_obj: AscPtr<Array<AscPtr<AscString>>> = module.invoke_export("test_array", vec_obj);
+<<<<<<< HEAD:runtime/test/src/test/abi.rs
     let new_vec: Vec<String> = asc_get(&module, new_vec_obj).unwrap();
+=======
+    let new_vec: Vec<String> = module.asc_get(new_vec_obj).unwrap();
+>>>>>>> runtime: Test gas usage:runtime/wasm/src/module/test/abi.rs
 
+    assert_eq!(module.gas_used(), 200657);
     assert_eq!(
         new_vec,
         vec![
