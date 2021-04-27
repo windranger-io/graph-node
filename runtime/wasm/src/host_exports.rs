@@ -414,7 +414,7 @@ impl<C: Blockchain> HostExports<C> {
         y: BigInt,
         gas: &GasCounter,
     ) -> Result<BigInt, DeterministicHostError> {
-        gas.consume_host_fn(gas::DEFAULT_GAS_OP.with_args(complexity::Max, (&x, &y)))?;
+        gas.consume_host_fn(gas::BIG_MATH_GAS_OP.with_args(complexity::Max, (&x, &y)))?;
         Ok(x + y)
     }
 
@@ -424,7 +424,7 @@ impl<C: Blockchain> HostExports<C> {
         y: BigInt,
         gas: &GasCounter,
     ) -> Result<BigInt, DeterministicHostError> {
-        gas.consume_host_fn(gas::DEFAULT_GAS_OP.with_args(complexity::Max, (&x, &y)))?;
+        gas.consume_host_fn(gas::BIG_MATH_GAS_OP.with_args(complexity::Max, (&x, &y)))?;
         Ok(x - y)
     }
 
@@ -434,7 +434,7 @@ impl<C: Blockchain> HostExports<C> {
         y: BigInt,
         gas: &GasCounter,
     ) -> Result<BigInt, DeterministicHostError> {
-        gas.consume_host_fn(gas::DEFAULT_GAS_OP.with_args(complexity::Mul, (&x, &y)))?;
+        gas.consume_host_fn(gas::BIG_MATH_GAS_OP.with_args(complexity::Mul, (&x, &y)))?;
         Ok(x * y)
     }
 
@@ -444,7 +444,7 @@ impl<C: Blockchain> HostExports<C> {
         y: BigInt,
         gas: &GasCounter,
     ) -> Result<BigInt, DeterministicHostError> {
-        gas.consume_host_fn(gas::DEFAULT_GAS_OP.with_args(complexity::Mul, (&x, &y)))?;
+        gas.consume_host_fn(gas::BIG_MATH_GAS_OP.with_args(complexity::Mul, (&x, &y)))?;
         if y == 0.into() {
             return Err(DeterministicHostError(anyhow!(
                 "attempted to divide BigInt `{}` by zero",
@@ -460,7 +460,7 @@ impl<C: Blockchain> HostExports<C> {
         y: BigInt,
         gas: &GasCounter,
     ) -> Result<BigInt, DeterministicHostError> {
-        gas.consume_host_fn(gas::DEFAULT_GAS_OP.with_args(complexity::Mul, (&x, &y)))?;
+        gas.consume_host_fn(gas::BIG_MATH_GAS_OP.with_args(complexity::Mul, (&x, &y)))?;
         if y == 0.into() {
             return Err(DeterministicHostError(anyhow!(
                 "attempted to calculate the remainder of `{}` with a divisor of zero",
@@ -477,7 +477,7 @@ impl<C: Blockchain> HostExports<C> {
         exp: u8,
         gas: &GasCounter,
     ) -> Result<BigInt, DeterministicHostError> {
-        gas.consume_host_fn(gas::DEFAULT_GAS_OP.with_args(complexity::Exponential, (&x, exp)))?;
+        gas.consume_host_fn(gas::BIG_MATH_GAS_OP.with_args(complexity::Exponential, (&x, exp)))?;
         Ok(x.pow(exp))
     }
 
@@ -498,7 +498,7 @@ impl<C: Blockchain> HostExports<C> {
         y: BigInt,
         gas: &GasCounter,
     ) -> Result<BigInt, DeterministicHostError> {
-        gas.consume_host_fn(gas::DEFAULT_GAS_OP.with_args(complexity::Max, (&x, &y)))?;
+        gas.consume_host_fn(gas::BIG_MATH_GAS_OP.with_args(complexity::Max, (&x, &y)))?;
         Ok(x | y)
     }
 
@@ -508,7 +508,7 @@ impl<C: Blockchain> HostExports<C> {
         y: BigInt,
         gas: &GasCounter,
     ) -> Result<BigInt, DeterministicHostError> {
-        gas.consume_host_fn(gas::DEFAULT_GAS_OP.with_args(complexity::Min, (&x, &y)))?;
+        gas.consume_host_fn(gas::BIG_MATH_GAS_OP.with_args(complexity::Min, (&x, &y)))?;
         Ok(x & y)
     }
 
@@ -518,7 +518,7 @@ impl<C: Blockchain> HostExports<C> {
         bits: u8,
         gas: &GasCounter,
     ) -> Result<BigInt, DeterministicHostError> {
-        gas.consume_host_fn(gas::DEFAULT_GAS_OP.with_args(complexity::Linear, (&x, &bits)))?;
+        gas.consume_host_fn(gas::BIG_MATH_GAS_OP.with_args(complexity::Linear, (&x, &bits)))?;
         Ok(x << bits)
     }
 
@@ -528,7 +528,7 @@ impl<C: Blockchain> HostExports<C> {
         bits: u8,
         gas: &GasCounter,
     ) -> Result<BigInt, DeterministicHostError> {
-        gas.consume_host_fn(gas::DEFAULT_GAS_OP.with_args(complexity::Linear, (&x, &bits)))?;
+        gas.consume_host_fn(gas::BIG_MATH_GAS_OP.with_args(complexity::Linear, (&x, &bits)))?;
         Ok(x >> bits)
     }
 
@@ -548,7 +548,7 @@ impl<C: Blockchain> HostExports<C> {
         y: BigDecimal,
         gas: &GasCounter,
     ) -> Result<BigDecimal, DeterministicHostError> {
-        gas.consume_host_fn(gas::DEFAULT_GAS_OP.with_args(complexity::Linear, (&x, &y)))?;
+        gas.consume_host_fn(gas::BIG_MATH_GAS_OP.with_args(complexity::Linear, (&x, &y)))?;
         Ok(x + y)
     }
 
@@ -558,7 +558,7 @@ impl<C: Blockchain> HostExports<C> {
         y: BigDecimal,
         gas: &GasCounter,
     ) -> Result<BigDecimal, DeterministicHostError> {
-        gas.consume_host_fn(gas::DEFAULT_GAS_OP.with_args(complexity::Linear, (&x, &y)))?;
+        gas.consume_host_fn(gas::BIG_MATH_GAS_OP.with_args(complexity::Linear, (&x, &y)))?;
         Ok(x - y)
     }
 
@@ -568,7 +568,7 @@ impl<C: Blockchain> HostExports<C> {
         y: BigDecimal,
         gas: &GasCounter,
     ) -> Result<BigDecimal, DeterministicHostError> {
-        gas.consume_host_fn(gas::DEFAULT_GAS_OP.with_args(complexity::Mul, (&x, &y)))?;
+        gas.consume_host_fn(gas::BIG_MATH_GAS_OP.with_args(complexity::Mul, (&x, &y)))?;
         Ok(x * y)
     }
 
@@ -579,7 +579,7 @@ impl<C: Blockchain> HostExports<C> {
         y: BigDecimal,
         gas: &GasCounter,
     ) -> Result<BigDecimal, DeterministicHostError> {
-        gas.consume_host_fn(gas::DEFAULT_GAS_OP.with_args(complexity::Mul, (&x, &y)))?;
+        gas.consume_host_fn(gas::BIG_MATH_GAS_OP.with_args(complexity::Mul, (&x, &y)))?;
         if y == 0.into() {
             return Err(DeterministicHostError(anyhow!(
                 "attempted to divide BigDecimal `{}` by zero",
@@ -595,7 +595,7 @@ impl<C: Blockchain> HostExports<C> {
         y: BigDecimal,
         gas: &GasCounter,
     ) -> Result<bool, DeterministicHostError> {
-        gas.consume_host_fn(gas::DEFAULT_GAS_OP.with_args(complexity::Min, (&x, &y)))?;
+        gas.consume_host_fn(gas::BIG_MATH_GAS_OP.with_args(complexity::Min, (&x, &y)))?;
         Ok(x == y)
     }
 

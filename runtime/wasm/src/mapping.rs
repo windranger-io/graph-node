@@ -1,4 +1,4 @@
-use crate::gas::GasRules;
+use crate::gas::{Gas, GasRules};
 use crate::module::{ExperimentalFeatures, WasmInstance};
 use futures::sync::mpsc;
 use futures03::channel::oneshot::Sender;
@@ -90,7 +90,7 @@ pub fn spawn_module<C: Blockchain>(
 pub struct MappingRequest<C: Blockchain> {
     pub(crate) ctx: MappingContext<C>,
     pub(crate) trigger: C::MappingTrigger,
-    pub(crate) result_sender: Sender<Result<BlockState<C>, MappingError>>,
+    pub(crate) result_sender: Sender<Result<(BlockState<C>, Gas), MappingError>>,
 }
 
 pub struct MappingContext<C: Blockchain> {
