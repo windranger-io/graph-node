@@ -1,4 +1,3 @@
-use crate::gas::{self, complexity, Gas, GasCounter};
 use crate::{error::DeterminismLevel, module::IntoTrap};
 use ethabi::param_type::Reader;
 use ethabi::{decode, encode, Address, Token};
@@ -10,6 +9,7 @@ use graph::components::{arweave::ArweaveAdapter, store::EntityType};
 use graph::data::store;
 use graph::prelude::serde_json;
 use graph::prelude::{slog::b, slog::record_static, *};
+use graph::runtime::gas::{self, complexity, Gas, GasCounter};
 use graph::runtime::{DeterministicHostError, HostExportError};
 use graph::{blockchain::DataSource, bytes::Bytes};
 use never::Never;

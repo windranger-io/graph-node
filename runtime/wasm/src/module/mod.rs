@@ -12,10 +12,10 @@ use semver::Version;
 use wasmtime::{Memory, Trap};
 
 use crate::error::DeterminismLevel;
-use crate::gas::{self, Gas, GasCounter, SaturatingInto};
 use crate::mapping::MappingContext;
 use anyhow::Error;
 use graph::prelude::*;
+use graph::runtime::gas::{self, Gas, GasCounter, SaturatingInto};
 use graph::{components::subgraph::MappingError, runtime::AscPtr};
 use graph::{data::store, runtime::AscHeap};
 use graph::{

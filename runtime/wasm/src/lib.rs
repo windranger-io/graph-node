@@ -14,7 +14,7 @@ mod module;
 /// Runtime-agnostic implementation of exports to WASM.
 mod host_exports;
 
-mod gas;
+mod gas_rules;
 
 mod error;
 
