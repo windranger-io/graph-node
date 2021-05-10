@@ -300,7 +300,7 @@ async fn json_conversions() {
         scalar::BigInt::from_signed_bytes_le(&bytes)
     );
 
-    assert_eq!(module.gas_used(), 184180372);
+    assert_eq!(module.gas_used(), 51937534);
 }
 
 #[tokio::test]
@@ -548,7 +548,7 @@ async fn big_int_to_hex() {
         "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
     );
 
-    assert_eq!(module.gas_used(), 184013403);
+    assert_eq!(module.gas_used(), 51770565);
 }
 
 #[tokio::test]
@@ -612,7 +612,7 @@ async fn big_int_arithmetic() {
     let result: BigInt = asc_get(&module, result_ptr).unwrap();
     assert_eq!(result, BigInt::from(1));
 
-    assert_eq!(module.gas_used(), 184342018);
+    assert_eq!(module.gas_used(), 52099180);
 }
 
 #[tokio::test]
@@ -643,7 +643,7 @@ async fn bytes_to_base58() {
 >>>>>>> runtime: Test gas usage:runtime/wasm/src/module/test.rs
     assert_eq!(base58, "QmWmyoMoctfbAaiEs2G46gpeUmhqFRDW6KWo64y5r581Vz");
 
-    assert_eq!(module.gas_used(), 183820465);
+    assert_eq!(module.gas_used(), 51577627);
 }
 
 #[tokio::test]
@@ -680,7 +680,7 @@ async fn data_source_create() {
         module.invoke_export2_void("dataSourceCreate", name, params)?;
         module.instance_ctx_mut().ctx.state.exit_handler();
 
-        assert_eq!(module.gas_used(), 543636483);
+        assert_eq!(module.gas_used(), 151393645);
 
         Ok(module.take_ctx().ctx.state.drain_created_data_sources())
     };
@@ -814,7 +814,7 @@ async fn entity_store() {
         _ => assert!(false, "expected Insert modification"),
     }
 
-    assert_eq!(module.gas_used(), 312058391);
+    assert_eq!(module.gas_used(), 87948791);
 }
 
 #[tokio::test]
