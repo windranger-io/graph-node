@@ -129,8 +129,8 @@ impl<C: Blockchain> WasmInstance<C> {
         self.instance.get_func(func_name).unwrap()
     }
 
-    #[cfg(test)]
-    pub(crate) fn gas_used(&self) -> u64 {
+    #[cfg(debug_assertions)]
+    pub fn gas_used(&self) -> u64 {
         self.gas.get().into()
     }
 
