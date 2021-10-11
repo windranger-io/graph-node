@@ -59,6 +59,7 @@ impl ValueExt for q::Value {
 pub enum BlockConstraint {
     Hash(H256),
     Number(BlockNumber),
+    Min(BlockNumber),
     Latest,
 }
 
@@ -82,6 +83,9 @@ impl TryFromValue for BlockConstraint {
         } else if let Some(number_value) = map.get("number") {
             let number: u64 = TryFromValue::try_from_value(number_value)?;
             Ok(BlockConstraint::Number(TryFrom::try_from(number)?))
+        } else if let Some(number_value) = map.get("number_gte") {
+            let number: u64 = TryFromValue::try_from_value(number_value)?;
+            Ok(BlockConstraint::Min(TryFrom::try_from(number)?))
         } else {
             Err(anyhow!("invalid `BlockConstraint`"))
         }
