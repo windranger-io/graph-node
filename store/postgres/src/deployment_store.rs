@@ -310,7 +310,7 @@ impl DeploymentStore {
         mods: &[EntityModification],
         ptr: &BlockPtr,
         stopwatch: StopwatchMetrics,
-    ) -> Result<i32, StoreError> {
+    ) -> Result<(i32, Vec<(EntityKey, Vid)>), StoreError> {
         use EntityModification::*;
         let mut count = 0;
 
@@ -348,17 +348,25 @@ impl DeploymentStore {
         }
 
         // Apply modification groups.
+        let mut vid_map = Vec::new();
+
         // Inserts:
         for (entity_type, mut entities) in inserts.into_iter() {
-            count +=
+            for (id, vid) in
                 self.insert_entities(&entity_type, &mut entities, conn, layout, ptr, &stopwatch)?
-                    as i32
+            {
+                count += 1;
+                vid_map.push((
+                    EntityKey::data(layout.site.deployment.clone(), entity_type.to_string(), id),
+                    vid,
+                ))
+            }
         }
 
         // Overwrites:
         for (entity_type, (mut entities, vids)) in overwrites.into_iter() {
             // we do not update the count since the number of entities remains the same
-            self.overwrite_entities(
+            for (id, vid) in self.overwrite_entities(
                 &entity_type,
                 &mut entities,
                 vids.as_slice(),
@@ -366,7 +374,12 @@ impl DeploymentStore {
                 layout,
                 ptr,
                 &stopwatch,
-            )?;
+            )? {
+                vid_map.push((
+                    EntityKey::data(layout.site.deployment.clone(), entity_type.to_string(), id),
+                    vid,
+                ))
+            }
         }
 
         // Removals
@@ -375,7 +388,7 @@ impl DeploymentStore {
                 self.remove_entities(&entity_type, vids.as_slice(), conn, layout, ptr, &stopwatch)?
                     as i32;
         }
-        Ok(count)
+        Ok((count, vid_map))
     }
 
     fn insert_entities<'a>(
@@ -386,7 +399,7 @@ impl DeploymentStore {
         layout: &'a Layout,
         ptr: &BlockPtr,
         stopwatch: &StopwatchMetrics,
-    ) -> Result<usize, StoreError> {
+    ) -> Result<Vec<(String, Vid)>, StoreError> {
         let section = stopwatch.start_section("check_interface_entity_uniqueness");
         for (key, _) in data.iter() {
             // WARNING: This will potentially execute 2 queries for each entity key.
@@ -407,7 +420,7 @@ impl DeploymentStore {
         layout: &'a Layout,
         ptr: &BlockPtr,
         stopwatch: &StopwatchMetrics,
-    ) -> Result<usize, StoreError> {
+    ) -> Result<Vec<(String, Vid)>, StoreError> {
         let section = stopwatch.start_section("check_interface_entity_uniqueness");
         for (key, _) in data.iter() {
             // WARNING: This will potentially execute 2 queries for each entity key.
@@ -862,7 +875,7 @@ impl DeploymentStore {
         stopwatch: StopwatchMetrics,
         data_sources: &[StoredDynamicDataSource],
         deterministic_errors: &[SubgraphError],
-    ) -> Result<StoreEvent, StoreError> {
+    ) -> Result<(StoreEvent, Vec<(EntityKey, Vid)>), StoreError> {
         // All operations should apply only to data or metadata for this subgraph
         if mods
             .iter()
@@ -880,7 +893,7 @@ impl DeploymentStore {
             self.get_conn()?
         };
 
-        let event = conn.transaction(|| -> Result<_, StoreError> {
+        conn.transaction(|| -> Result<_, StoreError> {
             // Emit a store event for the changes we are about to make. We
             // wait with sending it until we have done all our other work
             // so that we do not hold a lock on the notification queue
@@ -890,7 +903,7 @@ impl DeploymentStore {
             // Make the changes
             let layout = self.layout(&conn, site.clone())?;
             let section = stopwatch.start_section("apply_entity_modifications");
-            let count = self.apply_entity_modifications(
+            let (count, vid_map) = self.apply_entity_modifications(
                 &conn,
                 layout.as_ref(),
                 mods,
@@ -924,10 +937,8 @@ impl DeploymentStore {
                 }
             }
 
-            Ok(event)
-        })?;
-
-        Ok(event)
+            Ok((event, vid_map))
+        })
     }
 
     fn rewind_with_conn(
