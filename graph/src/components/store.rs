@@ -1793,7 +1793,7 @@ impl AttributeNames {
     }
 
     /// Adds a attribute name. Ignores meta fields.
-    pub fn update(&mut self, field: &q::Field) {
+    pub fn add(&mut self, field: &q::Field) {
         if Self::is_meta_field(&field.name) {
             return;
         }
@@ -1801,7 +1801,7 @@ impl AttributeNames {
     }
 
     /// Adds a attribute name. Ignores meta fields.
-    pub fn update_str(&mut self, field_name: &str) {
+    pub fn add_str(&mut self, field_name: &str) {
         if Self::is_meta_field(field_name) {
             return;
         }
